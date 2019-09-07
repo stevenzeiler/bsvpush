@@ -13,12 +13,19 @@
   "license": "ISC",
   "dependencies": {
     "@types/command-line-args": "^5.0.0",
-    "@types/node": "^12.6.2",
+    "@types/mocha": "^5.2.7",
+    "@types/node": "^12.7.4",
     "@types/node-fetch": "^2.3.7",
     "bitindex-sdk": "^3.0.14",
     "bsv": "^0.27.2",
+    "chai": "^4.2.0",
+    "chai-integer": "^0.1.0",
+    "commander": "^3.0.1",
+    "mocha": "^6.2.0",
     "node-fetch": "^2.6.0",
-    "readline-promise": "^1.0.4"
+    "promise-fs": "^2.1.1",
+    "readline-promise": "^1.0.4",
+    "superagent": "^5.1.0"
   },
   "devDependencies": {
     "ts-node": "^8.3.0",

@@ -1,7 +1,7 @@
-import crypto from 'crypto';
-import fs from 'fs';
+import * as crypto from 'crypto';
+import * as fs from 'fs';
 import fetch from 'node-fetch';
-import path from 'path';
+import * as path from 'path';
 import readline from 'readline-promise';
 
 import BitIndexSDK from 'bitindex-sdk';
@@ -10,6 +10,8 @@ import { MetanetCache } from './metanet_cache';
 import { MetanetNode } from './metanet_node';
 import { BCatMetanetNode } from './bcat_metanet_node';
 import { gzipSync } from 'zlib';
+
+import * as bitcoms from '../lib/bitcom';
 
 const bsv = require('bsv');
 const bitindex = new BitIndexSDK();
@@ -25,10 +27,10 @@ export class Push {
   maxFileSize        = 90000;
   gzipThreshold      = 1000;
 
-  bFileProtocol      = '19HxigV4QyBv3tHpQVcUEQyq1pzZVdoAut';   // B:// format https://github.com/unwriter/B
-  bCatProtocol       = '15DHFxWZJT58f9nhyGnsRBqrgwK4W6h4Up';   // http://bcat.bico.media/
-  bCatPartProtocol   = '1ChDHzdd1H4wSjgGMHyndZm6qxEDGjqpJL';   // BCat part
-  dipProtocol        = '1D1PdbxVxcjfovTATC3ginxjj4enTgxLyY';   // https://github.com/torusJKL/BitcoinBIPs/blob/master/DIP.md
+  bFileProtocol      = bitcoms.bFileProtocol;
+  bCatProtocol       = bitcoms.bCatProtocol;
+  bCatPartProtocol   = bitcoms.bCatPartProtocol;
+  dipProtocol        = bitcoms.dipProtocol;
 
   private _packageInfo;
   get packageInfo() {

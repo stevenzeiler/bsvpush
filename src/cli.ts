@@ -2,34 +2,47 @@
 
 import { clone } from './clone';
 import { push } from './push';
+import { estimateFeesForFile } from '../lib';
+import * as fs from 'fs';
+import { convertSatoshis } from '../lib/prices';
 
-void (async () => {
-  switch (process.argv[2]) {
-    case 'init':
-      push.init();
-      break;
-    case 'clone':
-      if (process.argv.length < 4) {
-        console.log('Clone requires a transaction id as an argument: ');
-        console.log('\tbsvpush clone txid');
-        process.exit(1);
-      }
-      const txid = process.argv[3];
-      await clone.clone(txid);
-      break;
-    case 'help':
-      console.log('Use one of the following:');
-      console.log('\tbsvpush init');
-      console.log('\tbsvpush clone txid');
-      console.log('\tbsvpush push');
-      break;
-    case 'push':
-    case undefined:
-      try {
-        await push.push();
-      } catch (e) {
-        console.log(e);
-      }
-      break;
-  }
-})();
+import * as commander from 'commander';
+
+commander
+  .command('clone <txid>')
+  .action(async (txid) => {
+    await clone.clone(txid);
+    process.exit(0);
+  });
+
+commander
+  .command('init')
+  .action(async () => {
+    push.init();
+    process.exit(0);
+  });
+
+commander
+  .command('upload <filepath>')
+  .option('-d, --dryrun')
+  .action(async (filepath, options) => {
+
+    if (options.dryrun) {
+
+      console.log("DRY RUN WILL NOT SEND");
+
+    }
+
+    let buffer = fs.readFileSync(filepath);
+    let fees = await estimateFeesForFile(buffer);
+
+    let dollars = await convertSatoshis(fees, 'USD');
+
+    console.log(`It will cost ${fees} satoshis ($ ${dollars}) to upload ${filepath}`);
+
+    process.exit(0);
+
+  });
+
+commander.parse(process.argv);
+
