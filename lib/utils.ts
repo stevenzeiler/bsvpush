@@ -1,13 +1,14 @@
 
 import * as bsv from 'bsv';
 import { bitindex } from './bitindex';
+import * as constants from './constants';
 
 export function getDummyUTXO() {
   return bsv.Transaction.UnspentOutput({
     address: '19dCWu1pvak7cgw5b1nFQn9LapFSQLqahC',
     txId: 'e29bc8d6c7298e524756ac116bd3fb5355eec1da94666253c3f40810a4000804',
     outputIndex: 0,
-    satoshis: 5000000000,
+    satoshis: 5000,
     scriptPubKey: '21034b2edef6108e596efb2955f796aa807451546025025833e555b6f9b433a4a146ac'
   });
 }
@@ -46,10 +47,10 @@ export function estimateFee(script: bsv.Script): number {
     process.exit(1);
   }
 
-  const tempTX = new bsv.Transaction().from([getDummyUTXO()]);
+  const tempTX = new bsv.Transaction().from([(getDummyUTXO())]);
   tempTX.addOutput(new bsv.Transaction.Output({ script: script.toString(), satoshis: 0 }));
 
   // Use the dummy txid for now as it will be used in the children tx size calculations
-  return Math.max(tempTX._estimateFee(), this.minimumOutputValue);
+  return Math.max(tempTX._estimateFee(), constants.minimumOutputValue);
 }
 

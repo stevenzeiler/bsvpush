@@ -9,7 +9,7 @@ describe("Various Utilities for Bcat", () => {
 
     it("#getDummyUTXO should return a bsv output script", async () => {
 
-      let output = await utils.getDummyUTXO();
+      let output = utils.getDummyUTXO();
 
       assert(output instanceof bsv.Transaction.UnspentOutput);
 
@@ -30,8 +30,6 @@ describe("Various Utilities for Bcat", () => {
   describe("Estimating Fee for Bitcom Transaction", () => {
 
     it("#estimate fee should take a script and return satoshis", async () => {
-
-      let output = await utils.getDummyUTXO();
 
       let script = bsv.Script.fromASM('testscript');
 

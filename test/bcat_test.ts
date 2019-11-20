@@ -21,4 +21,20 @@ describe("Bcat Utilities", () => {
 
   });
 
+  describe("Generating Bcat Scripts", () => {
+
+    it.skip("generateBScript", () => {
+
+      assert.strictEqual(typeof bcat.generateBcatScript, 'function');
+
+    });
+
+    it.skip("generateBcatScript", () => {
+
+      assert.strictEqual(typeof bcat.generateBScript, 'function');
+
+    });
+
+  });
+
 });

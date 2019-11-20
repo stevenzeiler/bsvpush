@@ -20,16 +20,6 @@ import { BCatMetanetNode } from './bcat_metanet_node';
  * Files/dir listed in .bsvignore will be ignored (currently only exact match).
  */
 export class Push {
-  fee                = constants.fee;
-  feeb               = constants.feeb;
-  minimumOutputValue = constants.minimumOutputValue;
-  maxFileSize        = constants.maxFileSize;
-  gzipThreshold      = constants.gzipThreshold;
-
-  bFileProtocol      = bitcoms.bFileProtocol;
-  bCatProtocol       = bitcoms.bCatProtocol;
-  bCatPartProtocol   = bitcoms.bCatPartProtocol;
-  dipProtocol        = bitcoms.dipProtocol;
 
   private _packageInfo;
   get packageInfo() {

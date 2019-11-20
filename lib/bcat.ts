@@ -82,3 +82,12 @@ export async function waitForUnconfirmedParents(fundingTx, fundingPublicKeyAddre
   }
 }
 
+export async function generateBScript() {
+
+}
+
+export async function generateBcatScript() {
+
+}
+
+
