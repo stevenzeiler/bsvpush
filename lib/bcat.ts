@@ -1,5 +1,7 @@
 
 import { query } from './genesis';
+import * as constants from './constants';
+import * as bsv from 'bsv';
 import * as utils from './utils';
 
 export async function waitForFundingTransactionToAppear(fundingTx) {
@@ -82,7 +84,36 @@ export async function waitForUnconfirmedParents(fundingTx, fundingPublicKeyAddre
   }
 }
 
-export async function generateBScript() {
+export async function generateBScript(fundingTx: bsv.Transaction, privateKey: bsv.PrivateKey, data: Buffer, utxo: bsv.Transaction.UnspentOutput) {
+
+  var txs = [];
+
+  for (let i = 0; i < data.length; i += constants.maxFileSize) {
+
+    const buffer = data.subarray(i, i + constants.maxFileSize);
+
+    const opReturnPayload = [
+      this.bCatPartProtocol,     // Bcat:// part
+      buffer                     // data
+    ];
+
+    const opReturn = ['OP_RETURN', ...utils.arrayToHexStrings(opReturnPayload)];
+
+    const script = bsv.Script.fromASM(opReturn.join(' '));
+
+    const tx = new bsv.Transaction().from([utxo]);
+
+    tx.addOutput(new bsv.Transaction.Output({ script: script.toString(), satoshis: 0 }));
+
+    tx.fee(await utils.estimateFee(script));
+
+    tx.sign(privateKey);
+
+    txs.push(tx);
+
+  }
+
+  return txs;
 
 }
 
