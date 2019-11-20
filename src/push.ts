@@ -1,31 +1,30 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
-import fetch from 'node-fetch';
 import * as path from 'path';
 import readline from 'readline-promise';
+import { gzipSync } from 'zlib';
+import * as bsv from 'bsv';
 
-import BitIndexSDK from 'bitindex-sdk';
+import * as constants from '../lib/constants';
+import * as bitcoms from '../lib/bitcom';
+
+import { bitindex } from '../lib/bitindex';
 
 import { MetanetCache } from './metanet_cache';
 import { MetanetNode } from './metanet_node';
 import { BCatMetanetNode } from './bcat_metanet_node';
-import { gzipSync } from 'zlib';
 
-import * as bitcoms from '../lib/bitcom';
-
-const bsv = require('bsv');
-const bitindex = new BitIndexSDK();
 
 /**
  * Recurses current directory and pushes all directories and files to the metanet.
  * Files/dir listed in .bsvignore will be ignored (currently only exact match).
  */
 export class Push {
-  fee                = 400;
-  feeb               = 1.1;
-  minimumOutputValue = 546;
-  maxFileSize        = 90000;
-  gzipThreshold      = 1000;
+  fee                = constants.fee;
+  feeb               = constants.feeb;
+  minimumOutputValue = constants.minimumOutputValue;
+  maxFileSize        = constants.maxFileSize;
+  gzipThreshold      = constants.gzipThreshold;
 
   bFileProtocol      = bitcoms.bFileProtocol;
   bCatProtocol       = bitcoms.bCatProtocol;
