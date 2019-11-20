@@ -23,3 +23,33 @@ export async function sleep(ms) {
   });
 }
 
+/**
+ * Converts the OP_RETURN payload to hex strings.
+ * @param array
+ */
+export function arrayToHexStrings(array: any[]): string[] {
+  return array.map(e => { 
+    if (e instanceof Buffer) {
+      return e.toString('hex');
+    } else if (typeof e === 'number') {
+      return e.toString(16).padStart(2, '0');
+    } else {
+      return Buffer.from(e).toString('hex');
+    }
+  });
+}
+
+export function estimateFee(script: bsv.Script): number {
+  //const script = bsv.Script.fromASM(node.opreturn.join(' '));
+  if (script.toBuffer().length > 100000) {
+    console.log(`Maximum OP_RETURN size is 100000 bytes. Script is ${script.toBuffer().length} bytes.`);
+    process.exit(1);
+  }
+
+  const tempTX = new bsv.Transaction().from([getDummyUTXO()]);
+  tempTX.addOutput(new bsv.Transaction.Output({ script: script.toString(), satoshis: 0 }));
+
+  // Use the dummy txid for now as it will be used in the children tx size calculations
+  return Math.max(tempTX._estimateFee(), this.minimumOutputValue);
+}
+

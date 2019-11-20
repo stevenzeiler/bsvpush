@@ -27,5 +27,21 @@ describe("Various Utilities for Bcat", () => {
 
   });
 
+  describe("Estimating Fee for Bitcom Transaction", () => {
+
+    it("#estimate fee should take a script and return satoshis", async () => {
+
+      let output = await utils.getDummyUTXO();
+
+      let script = bsv.Script.fromASM('testscript');
+
+      let fee = utils.estimateFee(script);
+
+      assert(fee > 0);
+
+    });
+
+  });
+
 });
 

@@ -315,7 +315,7 @@ export class Push {
       ...this.metanetHeader(parent, child),
       child.name
     ];
-    child.opreturn = ['OP_RETURN', ...this.arrayToHexStrings(opReturnPayload)];
+    child.opreturn = ['OP_RETURN', ...utils.arrayToHexStrings(opReturnPayload)];
   }
 
   /**
@@ -354,20 +354,20 @@ export class Push {
 
     const opReturnPayload = [
       ...this.metanetHeader(parent, child),
-      this.bFileProtocol,   // B:// format
+      bitcoms.bFileProtocol,// B:// format
       data,                 // Data
       mediaType,            // Media Type
       encoding,             // Encoding
       name,                 // Filename
       '|',                  // Pipe
-      this.dipProtocol,     // Data Integrity Protocol, file hash
+      bitcoms.dipProtocols,     // Data Integrity Protocol, file hash
       algorithm,            // Integrity check algorithm
       digest,
       0x01,                 // Explicit field encoding
       0x05                  // Hash the B:// data field
     ];
 
-    child.opreturn = ['OP_RETURN', ...this.arrayToHexStrings(opReturnPayload)];
+    child.opreturn = ['OP_RETURN', ...utils.arrayToHexStrings(opReturnPayload)];
     return child;
   }
 
@@ -407,14 +407,14 @@ export class Push {
 
     const dip = [
       '|',                  // Pipe
-      this.dipProtocol,     // Data Integrity Protocol, file hash
+      bitcoms.dipProtocols, // Data Integrity Protocol, file hash
       algorithm,            // Integrity check algorithm
       digest,
       0x01,                 // Explicit field encoding
       0x05                  // Hash the B:// data field
     ];
 
-    child.opreturn = ['OP_RETURN', ...this.arrayToHexStrings([...opReturnPayload, ...dip])];
+    child.opreturn = ['OP_RETURN', ...utils.arrayToHexStrings([...opReturnPayload, ...dip])];
     return child;
   }
 
@@ -425,11 +425,11 @@ export class Push {
       const buffer = data.subarray(i, i + this.maxFileSize);
 
       const opReturnPayload = [
-        this.bCatPartProtocol,   // Bcat:// part
+        bitcoms.bCatPartProtocol,   // Bcat:// part
         buffer                   // data
       ];
 
-      const opReturn = ['OP_RETURN', ...this.arrayToHexStrings(opReturnPayload)];
+      const opReturn = ['OP_RETURN', ...utils.arrayToHexStrings(opReturnPayload)];
 
       // Create transaction
       const script = bsv.Script.fromASM(opReturn.join(' '));
@@ -438,7 +438,7 @@ export class Push {
         process.exit(1);
       }
 
-      const tempTX = new bsv.Transaction().from([this.getDummyUTXO()]);
+      const tempTX = new bsv.Transaction().from([utils.getDummyUTXO()]);
       tempTX.addOutput(new bsv.Transaction.Output({ script: script.toString(), satoshis: 0 }));
 
       bcatPartFees.push(Math.max(Math.ceil(tempTX._estimateSize() * this.feeb), this.minimumOutputValue));
@@ -463,22 +463,6 @@ export class Push {
     ];
   }
 
-  /**
-   * Converts the OP_RETURN payload to hex strings.
-   * @param array
-   */
-  arrayToHexStrings(array): string[] {
-    return array.map(e => { 
-      if (e instanceof Buffer) {
-        return e.toString('hex');
-      } else if (typeof e === 'number') {
-        return e.toString(16).padStart(2, '0');
-      } else {
-        return Buffer.from(e).toString('hex');
-      }
-    });
-  }
-
   estimateFee(node): number {
     const script = bsv.Script.fromASM(node.opreturn.join(' '));
     if (script.toBuffer().length > 100000) {
@@ -486,7 +470,7 @@ export class Push {
       process.exit(1);
     }
 
-    const tempTX = new bsv.Transaction().from([this.getDummyUTXO()]);
+    const tempTX = new bsv.Transaction().from([utils.getDummyUTXO()]);
     tempTX.addOutput(new bsv.Transaction.Output({ script: script.toString(), satoshis: 0 }));
 
     // Use the dummy txid for now as it will be used in the children tx size calculations
@@ -576,7 +560,7 @@ export class Push {
           previousUnconfirmedOutputs = unconfirmedOutputs;
         }
         process.stdout.write('.');
-        await this.sleep(1000);
+        await utils.sleep(1000);
       }
     }
   }
@@ -608,7 +592,7 @@ export class Push {
         wait = false;
       } else {
         process.stdout.write('.');
-        await this.sleep(1000);
+        await utils.sleep(1000);
       }
     }
   }
@@ -653,11 +637,15 @@ export class Push {
   }
 
   async sendBCatParts(fundingTx, parent: MetanetNode, node: BCatMetanetNode) {
+
     const bcatTxIds = [];
+
     const data = fs.readFileSync(path.join(node.dir, node.name));
+
     let voutIndex = node.voutIndex + 1;
 
     for (let i = 0; i < data.length; i += this.maxFileSize) {
+
       const buffer = data.subarray(i, i + this.maxFileSize);
 
       const opReturnPayload = [
@@ -665,28 +653,45 @@ export class Push {
         buffer                     // data
       ];
 
-      const opReturn = ['OP_RETURN', ...this.arrayToHexStrings(opReturnPayload)];
+      const opReturn = ['OP_RETURN', ...utils.arrayToHexStrings(opReturnPayload)];
 
       const parentKey = this.metanetCache.masterKey.deriveChild(parent.keyPath);
+
       let utxo = null;
+
       while (!(utxo = await this.findUtxo(parentKey.publicKey.toAddress().toString(), fundingTx.id, voutIndex))) {
         console.log(`Waiting for UTXO for key: ${parentKey.publicKey.toAddress().toString()}, txid: ${fundingTx.id}, vout: ${node.voutIndex}`);
-        await this.sleep(1000);
+        await utils.sleep(1000);
       }
+
       voutIndex++;
+
       const script = bsv.Script.fromASM(opReturn.join(' '));
+
       const tx = new bsv.Transaction().from([utxo]);
+
       tx.addOutput(new bsv.Transaction.Output({ script: script.toString(), satoshis: 0 }));
+
       tx.fee(node.fee);
+
       tx.sign(parentKey.privateKey);
+
       bcatTxIds.push(tx.id);
+
       console.log(`\tSending Bcat part [${bcatTxIds.length}] tx id: ${tx.id}`);
+
       const response = await bitindex.tx.send(tx.toString());
+
       if (!response.txid) {
+
         console.log('Error sending transaction.');
+
         console.log(response);
+
         process.exit(1);
+
       }
+
     }
 
     // Update BCat opreturn with the txids
@@ -701,7 +706,7 @@ export class Push {
     let utxo = null;
     while (!(utxo = await this.findUtxo(parentKey.publicKey.toAddress().toString(), fundingTx.id, node.voutIndex))) {
       console.log(`Waiting for UTXO for key: ${parentKey.publicKey.toAddress().toString()}, txid: ${fundingTx.id}, vout: ${node.voutIndex}`);
-      await this.sleep(1000);
+      await utils.sleep(1000);
     }
 
     const utxos = [utxo];
@@ -725,21 +730,6 @@ export class Push {
     return utxos.find(utxo => utxo.txid === txid && utxo.vout === voutIndex);
   }
 
-  getDummyUTXO() {
-    return bsv.Transaction.UnspentOutput({
-      address: '19dCWu1pvak7cgw5b1nFQn9LapFSQLqahC',
-      txId: 'e29bc8d6c7298e524756ac116bd3fb5355eec1da94666253c3f40810a4000804',
-      outputIndex: 0,
-      satoshis: 5000000000,
-      scriptPubKey: '21034b2edef6108e596efb2955f796aa807451546025025833e555b6f9b433a4a146ac'
-    });
-  }
-
-  async sleep(ms) {
-    return new Promise(resolve => {
-        setTimeout(resolve, ms);
-    });
-  }
 }
 
 export const push = new Push();
