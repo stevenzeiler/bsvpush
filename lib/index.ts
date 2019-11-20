@@ -6,6 +6,9 @@ export const minimumOutputValue = 546;
 export const maxFileSize        = 90000;
 export const feeb                     = 1.1;
 
+import * as utils from './utils';
+export { utils }
+
 export async function estimateFeesForFile(data: Buffer): Promise<number> {
 
   const bcatPartFees = [];
@@ -27,7 +30,7 @@ export async function estimateFeesForFile(data: Buffer): Promise<number> {
       process.exit(1);
     }
 
-    const tempTX = new bsv.Transaction().from([getDummyUTXO()]);
+    const tempTX = new bsv.Transaction().from([utils.getDummyUTXO()]);
     tempTX.addOutput(new bsv.Transaction.Output({ script: script.toString(), satoshis: 0 }));
 
     bcatPartFees.push(Math.max(Math.ceil(tempTX._estimateSize() * feeb), minimumOutputValue));
@@ -46,16 +49,6 @@ export async function constructTransactionsForFile(filepath: string) {
 
 }
 
-
-function getDummyUTXO() {
-  return bsv.Transaction.UnspentOutput({
-    address: '19dCWu1pvak7cgw5b1nFQn9LapFSQLqahC',
-    txId: 'e29bc8d6c7298e524756ac116bd3fb5355eec1da94666253c3f40810a4000804',
-    outputIndex: 0,
-    satoshis: 5000000000,
-    scriptPubKey: '21034b2edef6108e596efb2955f796aa807451546025025833e555b6f9b433a4a146ac'
-  });
-}
 
 /**
  * Converts the OP_RETURN payload to hex strings.
