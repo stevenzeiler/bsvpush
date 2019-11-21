@@ -7,13 +7,13 @@ describe("Bcat Utilities", () => {
 
   describe("Funding Bcat Transactions", () => {
 
-    it.skip("#waitForFundingTransactionToAppear", async () => {
+    it("#waitForFundingTransactionToAppear", async () => {
 
       assert.strictEqual(typeof bcat.waitForFundingTransactionToAppear, 'function');
 
     });
 
-    it.skip("#waitForUnconfirmedParents", async () => {
+    it("#waitForUnconfirmedParents", async () => {
 
       assert.strictEqual(typeof bcat.waitForUnconfirmedParents, 'function');
 
@@ -23,15 +23,21 @@ describe("Bcat Utilities", () => {
 
   describe("Generating Bcat Scripts", () => {
 
-    it.skip("generateBScript", () => {
+    it("generateBScript", () => {
+
+      assert.strictEqual(typeof bcat.generateBScript, 'function');
+
+    });
+
+    it("generateBcatScript", () => {
 
       assert.strictEqual(typeof bcat.generateBcatScript, 'function');
 
     });
 
-    it.skip("generateBcatScript", () => {
+    it("generateBcatPartTransactions", () => {
 
-      assert.strictEqual(typeof bcat.generateBScript, 'function');
+      assert.strictEqual(typeof bcat.generateBcatPartTransactions, 'function');
 
     });
 

@@ -4,16 +4,17 @@ import * as path from 'path';
 import readline from 'readline-promise';
 import { gzipSync } from 'zlib';
 import * as bsv from 'bsv';
+import fetch from 'node-fetch';
 
 import * as constants from '../lib/constants';
 import * as bitcoms from '../lib/bitcom';
-
+import * as utils from '../lib/utils';
 import { bitindex } from '../lib/bitindex';
+import { query } from '../lib/genesis';
 
 import { MetanetCache } from './metanet_cache';
 import { MetanetNode } from './metanet_node';
 import { BCatMetanetNode } from './bcat_metanet_node';
-
 
 /**
  * Recurses current directory and pushes all directories and files to the metanet.
@@ -209,7 +210,7 @@ export class Push {
     const fundingTx = await this.fundingTransaction(fees, this.metanetCache.root);
 
     const metanetFees = fees.reduce((sum, entry) => sum + entry.fee, 0);
-    const fundingTxFee = Math.max(Math.ceil(fundingTx._estimateSize() * this.feeb), this.minimumOutputValue);
+    const fundingTxFee = Math.max(Math.ceil(fundingTx._estimateSize() * constants.feeb), constants.minimumOutputValue);
     const totalFee = metanetFees + fundingTxFee;
 
     console.log(`Metanet fees will be: ${this.feeToString(metanetFees)}, ${fees.length} transactions`);
@@ -270,7 +271,7 @@ export class Push {
           this.generateScripts(path.join(dir, file.name), child, node, fees);
         } else {
           const fileSize = fs.statSync(path.join(dir, file.name)).size;
-          const child = fileSize > this.maxFileSize ?
+          const child = fileSize > constants.maxFileSize ?
                           this.bcatScript(dir, file.name, node) :
                           this.fileScript(dir, file.name, node);
           child.voutIndex = fees.length + 1;
@@ -326,7 +327,7 @@ export class Push {
     let mediaType = ' ';
     let encoding = ' ';
 
-    if (data.length > this.gzipThreshold) {
+    if (data.length > constants.gzipThreshold) {
       // Only compress if the compressed size is less than the original size
       const compressed = gzipSync(data);
       if (compressed.length < data.length) {
@@ -350,7 +351,7 @@ export class Push {
       encoding,             // Encoding
       name,                 // Filename
       '|',                  // Pipe
-      bitcoms.dipProtocols,     // Data Integrity Protocol, file hash
+      bitcoms.dipProtocol,     // Data Integrity Protocol, file hash
       algorithm,            // Integrity check algorithm
       digest,
       0x01,                 // Explicit field encoding
@@ -382,7 +383,7 @@ export class Push {
 
     const opReturnPayload = [
       ...this.metanetHeader(parent, child),
-      this.bCatProtocol,   // Bcat:// format
+      bitcoms.bCatProtocol,   // Bcat:// format
       ' ',                 // Info
       ' ',                 // MIME Type
       ' ',                 // Encoding
@@ -397,7 +398,7 @@ export class Push {
 
     const dip = [
       '|',                  // Pipe
-      bitcoms.dipProtocols, // Data Integrity Protocol, file hash
+      bitcoms.dipProtocol, // Data Integrity Protocol, file hash
       algorithm,            // Integrity check algorithm
       digest,
       0x01,                 // Explicit field encoding
@@ -411,8 +412,8 @@ export class Push {
   bcatPartFees(data: Buffer): number[] {
     const bcatPartFees = [];
 
-    for (let i = 0; i < data.length; i += this.maxFileSize) {
-      const buffer = data.subarray(i, i + this.maxFileSize);
+    for (let i = 0; i < data.length; i += constants.maxFileSize) {
+      const buffer = data.subarray(i, i + constants.maxFileSize);
 
       const opReturnPayload = [
         bitcoms.bCatPartProtocol,   // Bcat:// part
@@ -431,7 +432,7 @@ export class Push {
       const tempTX = new bsv.Transaction().from([utils.getDummyUTXO()]);
       tempTX.addOutput(new bsv.Transaction.Output({ script: script.toString(), satoshis: 0 }));
 
-      bcatPartFees.push(Math.max(Math.ceil(tempTX._estimateSize() * this.feeb), this.minimumOutputValue));
+      bcatPartFees.push(Math.max(Math.ceil(tempTX._estimateSize() * constants.feeb), constants.minimumOutputValue));
     }
 
     return bcatPartFees;
@@ -466,7 +467,7 @@ export class Push {
     // Use the dummy txid for now as it will be used in the children tx size calculations
     node.txId = tempTX.id.toString();
 
-    return Math.max(tempTX._estimateFee(), this.minimumOutputValue);
+    return Math.max(tempTX._estimateFee(), constants.minimumOutputValue);
   }
 
   /**
@@ -487,7 +488,7 @@ export class Push {
 
     const tx = new bsv.Transaction()
       .from(utxos)
-      .fee(this.fee)
+      .fee(constants.fee)
       .change(this.fundingKey.publicKey.toAddress());
 
     if (root) {
@@ -501,7 +502,7 @@ export class Push {
       tx.to(parentKey.publicKey.toAddress(), entry.fee);
     });
 
-    const thisFee = Math.ceil(tx._estimateSize() * this.feeb);
+    const thisFee = Math.ceil(tx._estimateSize() * constants.feeb);
     tx.fee(thisFee);
     tx.sign(this.fundingKey.privateKey);
 
@@ -525,7 +526,7 @@ export class Push {
     let previousUnconfirmedOutputs = 0;
     let wait = true;
     while (wait) {
-      const json = await this.genesisQuery({
+      const json = await query({
         "v": 3,
         "q": {
             "db": ["u"],
@@ -563,7 +564,7 @@ export class Push {
     console.log('Waiting for funding transaction to appear on network...');
     let wait = true;
     while (wait) {
-      const json = await this.genesisQuery({
+      const json = await query({
         "v": 3,
         "q": {
             "find": {
@@ -634,12 +635,12 @@ export class Push {
 
     let voutIndex = node.voutIndex + 1;
 
-    for (let i = 0; i < data.length; i += this.maxFileSize) {
+    for (let i = 0; i < data.length; i += constants.maxFileSize) {
 
-      const buffer = data.subarray(i, i + this.maxFileSize);
+      const buffer = data.subarray(i, i + constants.maxFileSize);
 
       const opReturnPayload = [
-        this.bCatPartProtocol,     // Bcat:// part
+        bitcoms.bCatPartProtocol,     // Bcat:// part
         buffer                     // data
       ];
 

@@ -1,8 +1,12 @@
 
+import * as bsv from 'bsv';
+import * as crypto from 'crypto';
+import * as utils from './utils';
+import { gzipSync } from 'zlib';
+
 import { query } from './genesis';
 import * as constants from './constants';
-import * as bsv from 'bsv';
-import * as utils from './utils';
+import * as bitcoms from './bitcom';
 
 export async function waitForFundingTransactionToAppear(fundingTx) {
 
@@ -84,7 +88,48 @@ export async function waitForUnconfirmedParents(fundingTx, fundingPublicKeyAddre
   }
 }
 
-export async function generateBScript(fundingTx: bsv.Transaction, privateKey: bsv.PrivateKey, data: Buffer, utxo: bsv.Transaction.UnspentOutput) {
+export async function generateBScript(data: Buffer) {
+
+  let mediaType = ' ';
+  let encoding = ' ';
+
+  if (data.length > constants.gzipThreshold) {
+    // Only compress if the compressed size is less than the original size
+    const compressed = gzipSync(data);
+    if (compressed.length < data.length) {
+      data = compressed;
+      mediaType = 'application/x-gzip'; // For compatibility with Bico.Media
+      encoding = 'gzip';
+    }
+  }
+
+  const algorithm = 'SHA512';
+  const hash = crypto.createHash(algorithm);
+  hash.update(data);
+  const digest = hash.digest('hex');
+  //console.log(`File '${name}' ${algorithm} digest: ${digest}`);
+
+  let name = 'unnamedfile';
+
+  const opReturnPayload = [
+    bitcoms.bFileProtocol,// B:// format
+    data,                 // Data
+    mediaType,            // Media Type
+    encoding,             // Encoding
+    name                 ,// Filename
+    '|',                  // Pipe
+    bitcoms.dipProtocol,  // Data Integrity Protocol, file hash
+    algorithm,            // Integrity check algorithm
+    digest,
+    0x01,                 // Explicit field encoding
+    0x05                  // Hash the B:// data field
+  ];
+
+  return ['OP_RETURN', ...utils.arrayToHexStrings(opReturnPayload)];
+
+}
+
+export async function generateBcatPartTransactions(data: Buffer, privateKey: bsv.PrivateKey) {
 
   var txs = [];
 
@@ -100,6 +145,11 @@ export async function generateBScript(fundingTx: bsv.Transaction, privateKey: bs
     const opReturn = ['OP_RETURN', ...utils.arrayToHexStrings(opReturnPayload)];
 
     const script = bsv.Script.fromASM(opReturn.join(' '));
+
+    // TODO FIND UTXO FOR TRANSACTION
+    //
+
+    let utxo = await utils.getDummyUTXO();
 
     const tx = new bsv.Transaction().from([utxo]);
 
@@ -117,8 +167,37 @@ export async function generateBScript(fundingTx: bsv.Transaction, privateKey: bs
 
 }
 
-export async function generateBcatScript() {
+export function generateBcatScript(data: Buffer, parts: bsv.Transaction[]): any[] {
 
+  const algorithm = 'SHA512';
+  const hash = crypto.createHash(algorithm);
+  hash.update(data);
+  const digest = hash.digest('hex');
+  //console.log(`File '${name}' ${algorithm} digest: ${digest}`);
+
+  let name = 'unnamedfile';
+
+  const opReturnPayload = [
+    bitcoms.bCatProtocol,   // Bcat:// format
+    ' ',                 // Info
+    ' ',                 // MIME Type
+    ' ',                 // Encoding
+    name,                // Filename
+    ' '                  // Flag
+  ];
+
+  // Add dummy txids to the payload, for size estimation
+  parts.forEach(() => opReturnPayload.push('e29bc8d6c7298e524756ac116bd3fb5355eec1da94666253c3f40810a4000804'));
+
+  const dip = [
+    '|',                  // Pipe
+    bitcoms.dipProtocol, // Data Integrity Protocol, file hash
+    algorithm,            // Integrity check algorithm
+    digest,
+    0x01,                 // Explicit field encoding
+    0x05                  // Hash the B:// data field
+  ];
+
+  return ['OP_RETURN', ...utils.arrayToHexStrings([...opReturnPayload, ...dip])];
 }
-
 
