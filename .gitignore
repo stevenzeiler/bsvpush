@@ -5,3 +5,5 @@ launch.json
 dist
 
 .bsvpush
+.env
+

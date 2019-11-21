@@ -7,6 +7,7 @@ import { gzipSync } from 'zlib';
 import { query } from './genesis';
 import * as constants from './constants';
 import * as bitcoms from './bitcom';
+import { bitindex } from './bitindex';
 
 export async function waitForFundingTransactionToAppear(fundingTx) {
 
@@ -125,7 +126,11 @@ export async function generateBScript(data: Buffer) {
     0x05                  // Hash the B:// data field
   ];
 
-  return ['OP_RETURN', ...utils.arrayToHexStrings(opReturnPayload)];
+  let opreturn = ['OP_RETURN', ...utils.arrayToHexStrings(opReturnPayload)];
+
+  const script = bsv.Script.fromASM(opreturn.join(' '));
+
+  return script;
 
 }
 
@@ -201,3 +206,50 @@ export function generateBcatScript(data: Buffer, parts: bsv.Transaction[]): any[
   return ['OP_RETURN', ...utils.arrayToHexStrings([...opReturnPayload, ...dip])];
 }
 
+interface BuildBTransaction {
+  privateKey?: bsv.PrivateKey
+}
+
+export async function buildBTransaction(buffer: Buffer, utxos: any, options?: BuildBTransaction):
+  Promise<bsv.Transaction> {
+
+  if (!options.privateKey) {
+
+    options.privateKey = new bsv.PrivateKey(process.env.BSV_PRIVATE_KEY);
+  }
+
+  let script = await generateBScript(buffer);
+
+
+  const tx = new bsv.Transaction()
+    .from(utxos)
+    .change(options.privateKey.publicKey.toAddress())
+    .addOutput(new bsv.Transaction.Output({ script: script.toString(), satoshis: 0 }))
+
+  const fee = Math.ceil(tx._estimateSize() * constants.feeb);
+
+  tx.fee(fee)
+    .sign(options.privateKey);
+
+  return tx;
+
+}
+
+export async function buildBCatTransactions(buffer: Buffer, options: any = {}) {
+
+}
+
+export async function publishTransaction(transaction: bsv.Transaction) {
+
+  const response = await bitindex.tx.send(transaction.toString());
+
+  return response;
+
+}
+
+
+export function isBcatRequired(buffer: Buffer) {
+
+  return buffer.byteLength  > constants.maxFileSize;
+
+}
