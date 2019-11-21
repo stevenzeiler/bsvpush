@@ -235,7 +235,36 @@ export async function buildBTransaction(buffer: Buffer, utxos: any, options?: Bu
 
 }
 
-export async function buildBCatTransactions(buffer: Buffer, options: any = {}) {
+export async function buildBCatTransactions(data: Buffer, utxos, options: any = {}): Promise<any[]> {
+  var bcatParts = [];
+
+  for (let i = 0; i < data.length; i += constants.maxFileSize) {
+    const buffer = data.subarray(i, i + constants.maxFileSize);
+
+    const opReturnPayload = [
+      bitcoms.bCatPartProtocol,   // Bcat:// part
+      buffer                   // data
+    ];
+
+    const opReturn = ['OP_RETURN', ...utils.arrayToHexStrings(opReturnPayload)];
+
+    // Create transaction
+    const script = bsv.Script.fromASM(opReturn.join(' '));
+    if (script.toBuffer().length > 100000) {
+      console.log(`Maximum OP_RETURN size is 100000 bytes. Script is ${script.toBuffer().length} bytes.`);
+      process.exit(1);
+    }
+
+    const tempTX = new bsv.Transaction().from([utils.getDummyUTXO()]);
+    tempTX.addOutput(new bsv.Transaction.Output({ script: script.toString(), satoshis: 0 }));
+
+    let fee = Math.max(Math.ceil(tempTX._estimateSize() * constants.feeb), constants.minimumOutputValue);
+
+    bcatParts.push({ fee, opReturn });
+
+  }
+
+  return [{}, bcatParts];
 
 }
 
@@ -253,3 +282,32 @@ export function isBcatRequired(buffer: Buffer) {
   return buffer.byteLength  > constants.maxFileSize;
 
 }
+
+export async function createFundingTransaction(fees, privateKey: bsv.PrivateKey) {
+
+  const address = privateKey.publicKey.toAddress().toString();
+  const utxos = await bitindex.address.getUtxos(address);
+
+  if (utxos.length === 0) {
+    throw `No UTXOs available from funding key. Add new funds to: ${address}`;
+  }
+
+  const tx = new bsv.Transaction()
+    .from(utxos)
+    .change(address);
+
+  fees.forEach(entry => {
+    tx.to(address, entry.fee);
+  });
+
+  const fee = Math.ceil(tx._estimateSize() * constants.feeb);
+
+  tx.fee(fee);
+
+  tx.sign(privateKey);
+
+  return tx;
+
+}
+
+

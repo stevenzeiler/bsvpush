@@ -16,6 +16,16 @@ program
   .command('upload <filepath>')
   .action(async (filepath) => {
 
+    const privateKey = new bsv.PrivateKey(process.env.BSV_PRIVATE_KEY);
+
+    const address = privateKey.publicKey.toAddress().toString();
+
+    const utxos = await bitindex.address.getUtxos(address);
+
+    if (utxos.length === 0) {
+      throw new Error(`no unspent outputs available for ${address}`)
+    }
+
     try {
 
       if (!filepath.match(/^\//)) {
@@ -27,38 +37,42 @@ program
       let buffer = fs.readFileSync(filepath);
 
       if (bcat.isBcatRequired(buffer)) {
-        /*
 
-        let transactions: bcat.Transactions = bcat.buildBCatTransactions(buffer, {
+        console.log(utxos);
+
+        let [index, parts] = await bcat.buildBCatTransactions(buffer, utxos, {
           // options
         });
 
-        for (let transaction of transactions) {
-          await bcat.publishTransaction(tx);
+        console.log('PARTS', parts.map(p => p.fee));
+
+        let fundingTx = await bcat.createFundingTransaction(parts, privateKey);
+
+        console.log('funding tx', fundingTx);
+
+        console.log(fundingTx.toString());
+        console.log(fundingTx.toJSON());
+
+        let resp = await bcat.publishTransaction(fundingTx);
+
+        console.log('broadcast', resp);
+
+        console.log(`${parts.length} bcat parts`);
+        console.log(`${utxos.length} outputs ready`);
+
+        /*
+        for (let transaction of parts) {
+
+          await bcat.publishTransaction(transaction);
         }
          */
-
-        console.error('bcat not yet implemented');
 
         process.exit(1);
 
       } else {
 
-        console.log("bcat not required");
-
         // get utxo by creating a funding transaction or using
         // an existing utxo
-
-        const privateKey = new bsv.PrivateKey(process.env.BSV_PRIVATE_KEY);
-
-        const address = privateKey.publicKey.toAddress().toString();
-
-        const utxos = await bitindex.address.getUtxos(address);
-
-        if (utxos.length === 0) {
-          throw new Error(`no unspent outputs available for ${address}`)
-        }
-
         console.log('utxos', utxos);
 
         let tx = await bcat.buildBTransaction(buffer, utxos, {
